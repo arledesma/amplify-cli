@@ -21,6 +21,8 @@ export type AddAuthUserPoolOnlyWithOAuthSettings = AddAuthUserPoolOnlyNoOAuthSet
   appleAppTeamId: string;
   appleAppKeyID: string;
   appleAppPrivateKey: string;
+  oidcAppId: string;
+  oidcAppSecret: string;
 };
 
 export type AddAuthIdentityPoolAndUserPoolWithOAuthSettings = AddAuthUserPoolOnlyWithOAuthSettings & {
@@ -632,7 +634,10 @@ export function addAuthWithDefaultSocial(cwd: string, settings: any): Promise<vo
       APPLE_TEAM_ID,
       APPLE_KEY_ID,
       APPLE_PRIVATE_KEY,
-    } = getSocialProviders(true);
+      OIDC_APP_ID,
+      OIDC_APP_SECRET,
+      OIDC_APP_ISSUER,
+    }: any = getSocialProviders(true);
 
     spawn(getCLIPath(), ['add', 'auth'], { cwd, stripColors: true })
       .wait('Do you want to use the default authentication and security configuration?')
@@ -684,6 +689,120 @@ export function addAuthWithDefaultSocial(cwd: string, settings: any): Promise<vo
       .sendCarriageReturn()
       .wait('Enter your Private Key for your OAuth flow:')
       .send(APPLE_PRIVATE_KEY)
+      .sendCarriageReturn()
+      .wait('Enter your OIDC App ID for your OAuth flow:')
+      .send(OIDC_APP_ID)
+      .sendCarriageReturn()
+      .wait('Enter your OIDC App Secret for your OAuth flow:')
+      .send(OIDC_APP_SECRET)
+      .sendCarriageReturn()
+      .wait('Enter your OIDC Issuer url:')
+      .send(OIDC_APP_ISSUER)
+      .sendCarriageReturn()
+      .wait('Select your OIDC Attributes Request Method:')
+      .sendCarriageReturn()
+      .wait('Do you want to configure advanced settings such as setting scope and mapping ?')
+      .sendLine('n')
+      .sendEof()
+      .run((err: Error) => {
+        if (!err) {
+          resolve();
+        } else {
+          reject(err);
+        }
+      });
+  });
+}
+
+export function addAuthWithDefaultSocialAndAdvancedOIDCOptions(cwd: string, settings: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const {
+      FACEBOOK_APP_ID,
+      FACEBOOK_APP_SECRET,
+      GOOGLE_APP_ID,
+      GOOGLE_APP_SECRET,
+      AMAZON_APP_ID,
+      AMAZON_APP_SECRET,
+      APPLE_APP_ID,
+      APPLE_TEAM_ID,
+      APPLE_KEY_ID,
+      APPLE_PRIVATE_KEY,
+      OIDC_APP_ID,
+      OIDC_APP_SECRET,
+      OIDC_APP_ISSUER,
+      OIDC_APP_SCOPES,
+      OIDC_APP_MAPPING,
+    }: any = getSocialProviders(true);
+
+    spawn(getCLIPath(), ['add', 'auth'], { cwd, stripColors: true })
+      .wait('Do you want to use the default authentication and security configuration?')
+      .send(KEY_DOWN_ARROW)
+      .sendCarriageReturn()
+      .wait('How do you want users to be able to sign in?')
+      .sendCarriageReturn()
+      .wait('Do you want to configure advanced settings?')
+      .sendCarriageReturn()
+      .wait('What domain name prefix do you want to use?')
+      .sendCarriageReturn()
+      .wait('Enter your redirect signin URI:')
+      .sendLine('https://www.google.com/')
+      .wait('Do you want to add another redirect signin URI')
+      .sendLine('n')
+      .wait('Enter your redirect signout URI:')
+      .sendLine('https://www.nytimes.com/')
+      .wait('Do you want to add another redirect signout URI')
+      .sendLine('n')
+      .wait('Select the social providers you want to configure for your user pool:')
+      .send('a')
+      .sendCarriageReturn()
+      .wait('Enter your Facebook App ID for your OAuth flow:')
+      .send(FACEBOOK_APP_ID)
+      .sendCarriageReturn()
+      .wait('Enter your Facebook App Secret for your OAuth flow:')
+      .send(FACEBOOK_APP_SECRET)
+      .sendCarriageReturn()
+      .wait('Enter your Google Web Client ID for your OAuth flow:')
+      .send(GOOGLE_APP_ID)
+      .sendCarriageReturn()
+      .wait('Enter your Google Web Client Secret for your OAuth flow:')
+      .send(GOOGLE_APP_SECRET)
+      .sendCarriageReturn()
+      .wait('Enter your Amazon App ID for your OAuth flow:')
+      .send(AMAZON_APP_ID)
+      .sendCarriageReturn()
+      .wait('Enter your Amazon App Secret for your OAuth flow:')
+      .send(AMAZON_APP_SECRET)
+      .sendCarriageReturn()
+      .wait('Enter your Services ID for your OAuth flow:')
+      .send(APPLE_APP_ID)
+      .sendCarriageReturn()
+      .wait('Enter your Team ID for your OAuth flow:')
+      .send(APPLE_TEAM_ID)
+      .sendCarriageReturn()
+      .wait('Enter your Key ID for your OAuth flow:')
+      .send(APPLE_KEY_ID)
+      .sendCarriageReturn()
+      .wait('Enter your Private Key for your OAuth flow:')
+      .send(APPLE_PRIVATE_KEY)
+      .sendCarriageReturn()
+      .wait('Enter your OIDC App ID for your OAuth flow:')
+      .send(OIDC_APP_ID)
+      .sendCarriageReturn()
+      .wait('Enter your OIDC App Secret for your OAuth flow:')
+      .send(OIDC_APP_SECRET)
+      .sendCarriageReturn()
+      .wait('Enter your OIDC Issuer url:')
+      .send(OIDC_APP_ISSUER)
+      .sendCarriageReturn()
+      .wait('Select your OIDC Attributes Request Method:')
+      .sendCarriageReturn()
+      .wait('Do you want to configure advanced settings such as setting scope and mapping ?')
+      .sendLine('y')
+      .wait('Enter authorize scopes used by your application during authentication to authorize access to a user\'s details, like name and picture as a JSON array (ex. [\"openid\",\"test\"]):')
+      .send(OIDC_APP_SCOPES)
+      .sendCarriageReturn()
+      .wait('Enter the expected attributes mapping between your OIDC provider and your Cognito user as a JSON (ex. {"email":"EMAIL","username":"sub"}) (optional):')
+      .send(OIDC_APP_MAPPING)
       .sendCarriageReturn()
       .sendEof()
       .run((err: Error) => {
@@ -944,6 +1063,8 @@ export function addAuthWithMaxOptions(cwd: string, settings: any): Promise<void>
     APPLE_TEAM_ID,
     APPLE_KEY_ID,
     APPLE_PRIVATE_KEY,
+    OIDC_APP_ID,
+    OIDC_APP_SECRET,
   } = getSocialProviders(true);
 
   return new Promise((resolve, reject) => {
@@ -976,6 +1097,9 @@ export function addAuthWithMaxOptions(cwd: string, settings: any): Promise<void>
       .sendCarriageReturn()
       .wait('Enter your Bundle Identifier for your identity pool')
       .send('appleIDPOOL')
+      .sendCarriageReturn()
+      .wait('Enter your OIDC App ID for your identity pool')
+      .send('oidcIDPOOL')
       .sendCarriageReturn()
       .wait('Please provide a name for your user pool')
       .sendCarriageReturn()
@@ -1074,6 +1198,10 @@ export function addAuthWithMaxOptions(cwd: string, settings: any): Promise<void>
       .sendLine(APPLE_KEY_ID)
       .wait('Enter your Private Key for your OAuth flow')
       .sendLine(APPLE_PRIVATE_KEY)
+      .wait('Enter your OIDC App ID for your OAuth flow')
+      .sendLine(OIDC_APP_ID)
+      .wait('Enter your OIDC App Secret for your OAuth flow')
+      .sendLine(OIDC_APP_SECRET)
       .wait('Do you want to configure Lambda Triggers for Cognito')
       .sendLine('y')
       .wait('Which triggers do you want to enable for Cognito')
@@ -1287,6 +1415,10 @@ export function addAuthUserPoolOnlyWithOAuth(cwd: string, settings: AddAuthUserP
       .sendLine(settings.appleAppKeyID)
       .wait('Enter your Private Key for your OAuth flow:')
       .sendLine(settings.appleAppPrivateKey)
+      .wait('Enter your OIDC App ID for your OAuth flow')
+      .sendLine(settings.oidcAppId)
+      .wait('Enter your OIDC App Secret for your OAuth flow')
+      .sendLine(settings.oidcAppSecret)
       .wait('Do you want to configure Lambda Triggers for Cognito')
       .sendConfirmNo()
       .sendEof()
@@ -1411,6 +1543,10 @@ export function addAuthIdentityPoolAndUserPoolWithOAuth(
       .sendLine(settings.appleAppKeyID)
       .wait('Enter your Private Key for your OAuth flow:')
       .sendLine(settings.appleAppPrivateKey)
+      .wait('Enter your OIDC App ID for your OAuth flow')
+      .sendLine(settings.oidcAppId)
+      .wait('Enter your OIDC App Secret for your OAuth flow')
+      .sendLine(settings.oidcAppSecret)
       .wait('Do you want to configure Lambda Triggers for Cognito')
       .sendConfirmNo()
       .sendEof()

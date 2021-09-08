@@ -136,6 +136,7 @@ const attributeProviderMap = {
     facebook: {},
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   birthdate: {
@@ -148,6 +149,7 @@ const attributeProviderMap = {
       scope: 'profile',
     },
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   email: {
@@ -163,6 +165,7 @@ const attributeProviderMap = {
       attr: 'email',
       scope: 'profile',
     },
+    oidc: {},
     signinwithapple: {
       attr: 'email',
       scope: 'email',
@@ -178,6 +181,7 @@ const attributeProviderMap = {
       scope: 'profile',
     },
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {
       attr: 'lastName',
       scope: 'name',
@@ -193,6 +197,7 @@ const attributeProviderMap = {
       scope: 'profile',
     },
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   given_name: {
@@ -205,6 +210,7 @@ const attributeProviderMap = {
       scope: 'profile',
     },
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {
       attr: 'firstName',
       scope: 'name',
@@ -217,6 +223,7 @@ const attributeProviderMap = {
       attr: 'postal_code',
       scope: 'postal_code',
     },
+    oidc: {},
     signinwithapple: {},
   },
   middle_name: {
@@ -226,6 +233,7 @@ const attributeProviderMap = {
     },
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   name: {
@@ -241,12 +249,14 @@ const attributeProviderMap = {
       attr: 'name',
       scope: 'profile',
     },
+    oidc: {},
     signinwithapple: {},
   },
   nickname: {
     facebook: {},
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   phone_number: {
@@ -256,6 +266,7 @@ const attributeProviderMap = {
       scope: 'profile',
     },
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   picture: {
@@ -268,30 +279,35 @@ const attributeProviderMap = {
       scope: 'profile',
     },
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   preferred_username: {
     facebook: {},
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   profile: {
     facebook: {},
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   zoneinfo: {
     facebook: {},
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   website: {
     facebook: {},
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
   username: {
@@ -307,6 +323,7 @@ const attributeProviderMap = {
       attr: 'user_id',
       scope: 'profile:user_id',
     },
+    oidc: {},
     signinwithapple: {},
   },
   updated_at: {
@@ -316,6 +333,7 @@ const attributeProviderMap = {
     },
     google: {},
     loginwithamazon: {},
+    oidc: {},
     signinwithapple: {},
   },
 };
@@ -391,6 +409,11 @@ const coreAttributes = [
   },
 ];
 
+const attributesRequestMethod = [
+  'POST',
+  'GET'
+];
+
 const aliasAttributes = [
   {
     name: 'Email',
@@ -454,6 +477,10 @@ const hostedUIProviders = [
   {
     name: 'Login With Amazon',
     value: 'LoginWithAmazon',
+  },
+  {
+    name: 'Open ID Connect (OIDC)',
+    value: 'OIDC',
   },
   {
     name: 'Sign in with Apple',
@@ -615,6 +642,17 @@ const disableOptionsOnEdit = () => {
 const getAllMaps = edit => {
   if (edit) {
     disableOptionsOnEdit();
+    // Inject OIDC mapping
+    if (edit.oidcAttributesMapping) {
+      let oidcAttributesMapping = JSON.parse(edit.oidcAttributesMapping);
+      let newMap = {};
+      Object.keys(oidcAttributesMapping).map(
+        cognitoAttributeName => {
+        newMap[cognitoAttributeName] = attributeProviderMap[cognitoAttributeName];
+        newMap[cognitoAttributeName]['oidc'] = { 'attr': oidcAttributesMapping[cognitoAttributeName] };
+      });
+      Object.assign(attributeProviderMap, newMap);
+    }
   }
   return {
     aliasAttributes,
@@ -633,6 +671,7 @@ const getAllMaps = edit => {
     oAuthFlows,
     oAuthScopes,
     authorizeScopes,
+    attributesRequestMethod,
     attributeProviderMap,
     updateFlowMap,
     capabilities,
@@ -658,6 +697,7 @@ module.exports = {
   authorizeScopes,
   oAuthFlows,
   oAuthScopes,
+  attributesRequestMethod,
   messages,
   attributeProviderMap,
   updateFlowMap,

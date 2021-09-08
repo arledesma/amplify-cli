@@ -78,7 +78,7 @@ export interface CognitoIdentityPoolConfiguration {
  * Defines a social federation provider.
  */
 export interface CognitoIdentitySocialFederation {
-  provider: 'FACEBOOK' | 'GOOGLE' | 'AMAZON' | 'APPLE';
+  provider: 'FACEBOOK' | 'GOOGLE' | 'AMAZON' | 'APPLE' | 'OIDC';
   /**
    * ClientId unique to your client and the provider.
    */
@@ -180,7 +180,7 @@ interface SocialProviderConfig {
   /**
    * Social providers supported by Amplify and Cognito
    */
-  provider: 'FACEBOOK' | 'GOOGLE' | 'LOGIN_WITH_AMAZON';
+  provider: 'FACEBOOK' | 'GOOGLE' | 'LOGIN_WITH_AMAZON' | 'OIDC';
   /**
    * The client ID (sometimes called app ID) configured with the provider.
    */

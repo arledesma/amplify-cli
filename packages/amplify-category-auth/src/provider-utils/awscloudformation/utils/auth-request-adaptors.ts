@@ -138,7 +138,7 @@ const socialProviderMap = (
   requiredAttributes: string[] = [],
 ): SocialProviderResult => {
   const authProvidersUserPool = socialConfig.map(sc => sc.provider).map(provider => pascalCase(provider));
-  const socialConfigMap = socialConfig.reduce((acc, it) => {
+  const socialConfigMap = socialConfig.reduce((acc: SocialProviderResult, it: CognitoSocialProviderConfiguration) => {
     switch (it.provider) {
       case 'FACEBOOK':
         acc.facebookAppIdUserPool = it.clientId;
@@ -157,6 +157,10 @@ const socialProviderMap = (
         acc.signinwithappleTeamIdUserPool = it.teamId;
         acc.signinwithappleKeyIdUserPool = it.keyId;
         acc.signinwithapplePrivateKeyUserPool = it.privateKey;
+        break;
+      case 'OIDC':
+        result.oidcAppIdUserPool = it.clientId;
+        result.oidcAppSecretUserPool = it.clientSecret;
         break;
     }
     return acc;
@@ -280,7 +284,7 @@ const aliasAttributeMap: Record<CognitoUserAliasAttributes, AliasAttributes> = {
   [CognitoUserAliasAttributes.PHONE_NUMBER]: AttributeType.PHONE_NUMBER,
 };
 
-const socialFederationKeyMap = (provider: 'FACEBOOK' | 'AMAZON' | 'GOOGLE' | 'APPLE', projectType: string): string => {
+const socialFederationKeyMap = (provider: 'FACEBOOK' | 'AMAZON' | 'GOOGLE' | 'APPLE' | 'OIDC', projectType: string): string => {
   switch (provider) {
     case 'FACEBOOK':
       return 'facebookAppId';
@@ -299,6 +303,8 @@ const socialFederationKeyMap = (provider: 'FACEBOOK' | 'AMAZON' | 'GOOGLE' | 'AP
       }
     case 'APPLE':
       return 'appleAppId';
+    case 'OIDC':
+      return 'oidcAppId';
     default:
       throw new Error(`Unknown social federation provider [${provider}]`);
   }

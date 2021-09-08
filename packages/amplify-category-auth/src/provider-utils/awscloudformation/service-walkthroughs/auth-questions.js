@@ -20,6 +20,7 @@ async function serviceWalkthrough(context, defaultValuesFilename, stringMapsFile
   let userPoolGroupList = context.amplify.getUserPoolGroupList(context);
   let adminQueryGroup;
 
+  // LOAD POTENTIAL PREVIOUS RESPONSES
   handleUpdates(context, coreAnswers);
 
   // QUESTION LOOP
@@ -83,15 +84,44 @@ async function serviceWalkthrough(context, defaultValuesFilename, stringMapsFile
       answer[questionObj.key] &&
       answer[questionObj.key].length > 0
     ) {
-      const replacementArray = context.updatingAuth[questionObj.iterator];
-      for (let t = 0; t < answer[questionObj.key].length; t += 1) {
-        questionObj.validation = questionObj.iteratorValidation;
-        const newValue = await inquirer.prompt({
-          name: 'updated',
-          message: `Update ${answer[questionObj.key][t]}`,
-          validate: amplify.inputValidation(questionObj),
-        });
-        replacementArray.splice(replacementArray.indexOf(answer[questionObj.key][t]), 1, newValue.updated);
+      if (questionObj.iterator.endsWith('oidcAttributesMapping')) {
+        // Get data from existing entries loaded from stack parameters.json
+        let map = context.updatingAuth && context.updatingAuth['oidcAttributesMapping'] ? JSON.parse(context.updatingAuth['oidcAttributesMapping']) : {};
+        for (let t = 0; t < answer[questionObj.key].length; t += 1) {
+          let currentValue = map[answer[questionObj.key][t]] ? `(current value: ${map[answer[questionObj.key][t]]})`: '';
+          if (questionObj.key === 'RemoveMappings') {
+            delete map[answer[questionObj.key][t]]
+          } else {
+            const response = await inquirer.prompt({
+              name: 'oidcProviderAttributeName',
+              message: `Which OIDC provider’s attribute should map to Cognito’s "${chalk.green(answer[questionObj.key][t])}" attribute? ${currentValue}`,
+            });
+            map[answer[questionObj.key][t]] = response.oidcProviderAttributeName;
+          }
+        }
+        // Override current data to take changes into account
+        coreAnswers.oidcAttributesMapping = {};
+        Object.assign(coreAnswers.oidcAttributesMapping, map);
+        if (context.updatingAuth) {
+          context.updatingAuth['oidcAttributesMapping'] = JSON.stringify(map);
+        }
+      }
+      else {
+        const replacementArray = context.updatingAuth[questionObj.iterator];
+
+        for (let t = 0; t < answer[questionObj.key].length; t += 1) {
+          questionObj.validation = questionObj.iteratorValidation;
+          if (questionObj.key === 'RemoveScopes') {
+            replacementArray.splice(replacementArray.indexOf(answer[questionObj.key][t]), 1);
+          } else {
+            const newValue = await inquirer.prompt({
+              name: 'updated',
+              message: `Update ${answer[questionObj.key][t]}`,
+              validate: amplify.inputValidation(questionObj),
+            });
+            replacementArray.splice(replacementArray.indexOf(answer[questionObj.key][t]), 1, newValue.updated);
+          }
+        }
       }
       j += 1;
       // ADD-ANOTHER BLOCK
@@ -166,6 +196,7 @@ async function serviceWalkthrough(context, defaultValuesFilename, stringMapsFile
     delete context.updatingAuth.thirdPartyAuth;
     delete context.updatingAuth.authProviders;
     delete context.updatingAuth.facebookAppId;
+    delete context.updatingAuth.oidcAppId;
     delete context.updatingAuth.googleClientId;
     delete context.updatingAuth.googleIos;
     delete context.updatingAuth.googleAndroid;
@@ -425,26 +456,75 @@ function userPoolProviders(oAuthProviders, coreAnswers, prevAnswers) {
     res.hostedUIProviderMeta = JSON.stringify(
       oAuthProviders.map(el => {
         const lowerCaseEl = el.toLowerCase();
-        const delimmiter = el === 'Facebook' || el === 'SignInWithApple' ? ',' : ' ';
+        const delimiter = el === 'Facebook' || el === 'SignInWithApple' ? ',' : ' ';
         const scopes = [];
         const maps = {};
-        attributesForMapping.forEach(a => {
-          const attributeKey = attributeProviderMap[a];
-          if (attributeKey && attributeKey[`${lowerCaseEl}`] && attributeKey[`${lowerCaseEl}`].scope) {
-            if (scopes.indexOf(attributeKey[`${lowerCaseEl}`].scope) === -1) {
-              scopes.push(attributeKey[`${lowerCaseEl}`].scope);
+        let oidc_issuer = undefined;
+        let attributes_request_method = undefined;
+        if (el === 'OIDC') {
+          oidc_issuer = answers.oidcAppOIDCIssuer;
+          attributes_request_method = answers.oidcAppOIDCAttributesRequestMethod;
+
+          if (answers.oidcAuthorizeScopes) {
+            // from update auth with additional scope added
+            answers.oidcAuthorizeScopes.forEach(
+              // this is an array but contains element(s) that are comma delimited
+              scope => scopes.push(...scope.split(','))
+            )
+          }
+
+          if (coreAnswers.newOIDCAuthorizeScopes) {
+            // from add auth
+            coreAnswers.newOIDCAuthorizeScopes.forEach(
+              // this is an array but contains element(s) that are comma delimited
+              scope => scopes.push(...scope.split(','))
+            )
+          }
+
+          switch (typeof answers.oidcAttributesMapping) {
+            case 'string':
+              // from update auth => previous data loaded from file as escaped string
+              Object.assign(maps, JSON.parse(answers.oidcAttributesMapping));
+              break;
+            case 'object':
+              // from add auth
+              Object.assign(maps, answers.oidcAttributesMapping);
+              break;
+          }
+        } else {
+          attributesForMapping.forEach(a => {
+            const attributeKey = attributeProviderMap[a];
+            if (attributeKey && attributeKey[`${lowerCaseEl}`] && attributeKey[`${lowerCaseEl}`].scope) {
+              if (scopes.indexOf(attributeKey[`${lowerCaseEl}`].scope) === -1) {
+                scopes.push(attributeKey[`${lowerCaseEl}`].scope);
+              }
             }
-          }
-          if (el === 'Google' && !scopes.includes('openid')) {
-            scopes.unshift('openid');
-          }
-          if (attributeKey && attributeKey[`${lowerCaseEl}`] && attributeKey[`${lowerCaseEl}`].attr) {
-            maps[a] = attributeKey[`${lowerCaseEl}`].attr;
-          }
-        });
+            if (attributeKey && attributeKey[`${lowerCaseEl}`] && attributeKey[`${lowerCaseEl}`].attr) {
+              maps[a] = attributeKey[`${lowerCaseEl}`].attr;
+            }
+          });
+        }
+
+        // remove duplicates - OpenID scopes are case sensitive so we do not alter or remove case insensitive duplicates
+        const authorized_scopes = [...new Set(scopes)];
+        const requires_scope_openid = [
+          'Google',
+          'OIDC',
+        ];
+        if (requires_scope_openid.includes(el) && !authorized_scopes.includes('openid')) {
+          // Add required openid scope if missing
+          // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+          // OpenID Connect uses the following OAuth 2.0 request parameters with the Authorization Code Flow:
+          // scope
+          //   REQUIRED. OpenID Connect requests MUST contain the openid scope value. If the openid scope value is not present, the behavior is entirely unspecified.
+          authorized_scopes.unshift('openid');
+        }
+
         return {
           ProviderName: el,
-          authorize_scopes: scopes.join(delimmiter),
+          authorize_scopes: authorized_scopes.join(delimiter),
+          oidc_issuer:  oidc_issuer,
+          attributes_request_method: attributes_request_method,
           AttributeMapping: maps,
         };
       }),
@@ -548,10 +628,54 @@ function parseOAuthCreds(providers, metadata, envCreds) {
           providerKeys[`${lowerCaseEl}KeyIdUserPool`] = creds.key_id;
           providerKeys[`${lowerCaseEl}PrivateKeyUserPool`] = creds.private_key;
         } else {
+          if (el === 'OIDC') {
+            providerKeys[`${lowerCaseEl}AppOIDCIssuer`] = provider.oidc_issuer;
+            // split on ' ' for authorized scopes seem more intuitive based on OIDC but below it is splitting on ','
+            providerKeys[`${lowerCaseEl}AuthorizeScopes`] = provider.authorize_scopes.split(' ').filter(scope => scope != 'openid');
+            if (providerKeys[`${lowerCaseEl}AuthorizeScopes`].length === 0) {
+              providerKeys[`${lowerCaseEl}AuthorizeScopes`] = undefined;
+            }
+            providerKeys[`${lowerCaseEl}AttributesMapping`] = JSON.stringify(provider.AttributeMapping);
+          }
           providerKeys[`${lowerCaseEl}AppIdUserPool`] = creds.client_id;
           providerKeys[`${lowerCaseEl}AppSecretUserPool`] = creds.client_secret;
         }
-        providerKeys[`${lowerCaseEl}AuthorizeScopes`] = provider.authorize_scopes.split(',');
+        if (providerKeys[`${lowerCaseEl}AuthorizeScopes`].length === 0) {
+          /*
+           * hacky to not overwrite OIDC AuthorizeScopes that is splitting on space.
+           * This looks like an edge case bug to split on ',' as an OIDC scope can not contain a space but may contain a ','
+           * ---
+           * https://www.rfc-editor.org/rfc/rfc6749.html#appendix-A.4
+           * A.4.  "scope" Syntax
+           *    The "scope" element is defined in Section 3.3:
+           *      scope       = scope-token *( SP scope-token )
+           *      scope-token = 1*NQCHAR
+           * https://www.rfc-editor.org/rfc/rfc6749.html#appendix-A
+           * Appendix A.  Augmented Backus-Naur Form (ABNF) Syntax
+           *
+           *    This section provides Augmented Backus-Naur Form (ABNF) syntax
+           *    descriptions for the elements defined in this specification using the
+           *    notation of [RFC5234].  The ABNF below is defined in terms of Unicode
+           *    code points [W3C.REC-xml-20081126]; these characters are typically
+           *    encoded in UTF-8.  Elements are presented in the order first defined.
+           *
+           *    Some of the definitions that follow use the "URI-reference"
+           *    definition from [RFC3986].
+           *
+           *    Some of the definitions that follow use these common definitions:
+           *
+           *      VSCHAR     = %x20-7E
+           *      NQCHAR     = %x21 / %x23-5B / %x5D-7E
+           *      NQSCHAR    = %x20-21 / %x23-5B / %x5D-7E
+           *      UNICODECHARNOCRLF = %x09 /%x20-7E / %x80-D7FF /
+           *                          %xE000-FFFD / %x10000-10FFFF
+           *
+           *    (The UNICODECHARNOCRLF definition is based upon the Char definition
+           *    in Section 2.2 of [W3C.REC-xml-20081126], but omitting the Carriage
+           *    Return and Linefeed characters.)
+           */
+          providerKeys[`${lowerCaseEl}AuthorizeScopes`] = provider.authorize_scopes.split(',');
+        }
       } catch (e) {
         return null;
       }
@@ -563,7 +687,7 @@ function parseOAuthCreds(providers, metadata, envCreds) {
 }
 
 /*
-  Handle updates
+  Handle updates: loading existing responses from parameters.json and team provider info into context.updatingAuth
 */
 function handleUpdates(context, coreAnswers) {
   if (context.updatingAuth && context.updatingAuth.triggers) {
@@ -581,6 +705,7 @@ function handleUpdates(context, coreAnswers) {
     /* eslint-disable */
     const oAuthCreds = parseOAuthCreds(authProvidersUserPool, hostedUIProviderMeta, hostedUIProviderCreds);
     /* eslint-enable */
+
     context.updatingAuth = Object.assign(context.updatingAuth, oAuthCreds);
   }
 

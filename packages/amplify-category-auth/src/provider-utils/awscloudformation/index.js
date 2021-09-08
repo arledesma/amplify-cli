@@ -309,6 +309,9 @@ function getRequiredParamsForHeadlessInit(projectType, previousValues) {
     if (previousValues.authProviders.includes('www.amazon.com')) {
       requiredParams.push('amazonAppId');
     }
+    if (previousValues.authProviders.includes('OIDC')) {
+      requiredParams.push('oidcAppId');
+    }
     if (previousValues.authProviders.includes('appleid.apple.com')) {
       requiredParams.push('appleAppId');
     }

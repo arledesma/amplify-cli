@@ -63,6 +63,7 @@ export function authConfigPull(
     if (params[key]) pullCommand.push(...[`--${key}`, JSON.stringify(params[key])]);
   });
   const s = { ...defaultSettings, ...settings };
+  const { OIDC_APP_ID, OIDC_APP_SECRET } = getSocialProviders();
   return new Promise((resolve, reject) => {
     spawn(util.getCLIPath(), pullCommand, { cwd: projectRootDirPath, stripColors: true })
       .wait('Select the authentication method you want to use:')
@@ -86,6 +87,10 @@ export function authConfigPull(
       .wait('Do you plan on modifying this backend?')
       .sendLine('y')
       .wait('Successfully pulled backend environment dev from the cloud.')
+      .wait('Enter your OpenID Connect App ID for your OAuth flow:')
+      .sendLine(OIDC_APP_ID)
+      .wait('Enter your OpenID Connect App Secret for your OAuth flow:')
+      .sendLine(OIDC_APP_SECRET)
       .run((err: Error) => {
         if (!err) {
           resolve();
